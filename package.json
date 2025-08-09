@@ -42,5 +42,8 @@
 		"vitest": "^3.2.3",
 		"vitest-browser-svelte": "^0.1.0",
 		"zod": "^3.25.76"
+	},
+	"dependencies": {
+		"@elevenlabs/client": "^0.5.0"
 	}
 }

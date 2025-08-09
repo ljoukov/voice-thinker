@@ -1,23 +1,182 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	/// <reference types="svelte" />
+	/// <reference types="@sveltejs/kit" />
+	/// <reference types="svelte/elements" />
+	/// <reference lib="dom" />
 
 	let isActive = false;
-	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-	function handleClick() {
-		if (!isActive) {
-			isActive = true;
-			if (timeoutId) clearTimeout(timeoutId);
-			timeoutId = setTimeout(() => {
+	let mediaRecorder: MediaRecorder | null = null;
+	let mediaStream: MediaStream | null = null;
+	let chunks: Blob[] = [];
+
+	let audioEl: HTMLAudioElement | null = null;
+	let objectUrl: string | null = null;
+	let mimeType: string | undefined;
+
+	if (typeof window !== 'undefined') {
+		audioEl = new Audio();
+	}
+
+	function pickMime(): string | undefined {
+		if (typeof MediaRecorder === 'undefined') return undefined;
+		const candidates = [
+			'audio/webm;codecs=opus',
+			'audio/webm',
+			'audio/mp4;codecs=mp4a.40.2',
+			'audio/mp4'
+		];
+		return candidates.find((c) => MediaRecorder.isTypeSupported(c)) ?? undefined;
+	}
+
+	async function startRecording() {
+		if (isActive || mediaRecorder) return;
+
+		// stop any current playback and cleanup
+		if (audioEl) {
+			try {
+				audioEl.pause();
+				audioEl.currentTime = 0;
+			} catch {}
+			if (objectUrl) {
+				URL.revokeObjectURL(objectUrl);
+				objectUrl = null;
+			}
+			audioEl.src = '';
+		}
+
+		try {
+			mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			mimeType = pickMime();
+			chunks = [];
+			mediaRecorder = mimeType
+				? new MediaRecorder(mediaStream, { mimeType })
+				: new MediaRecorder(mediaStream);
+
+			mediaRecorder.ondataavailable = (e) => {
+				if (e.data && e.data.size > 0) {
+					chunks.push(e.data);
+				}
+			};
+
+			mediaRecorder.onstop = async () => {
+				const fallbackType = mimeType?.split(';')[0] ?? 'audio/webm';
+				const ext = fallbackType.includes('mp4') ? 'mp4' : 'webm';
+				const blob = new Blob(chunks, { type: fallbackType });
+
+				// release the mic
+				mediaStream?.getTracks().forEach((t) => t.stop());
+				mediaStream = null;
+				mediaRecorder = null;
 				isActive = false;
-				timeoutId = null;
-			}, 3000);
+
+				try {
+					const fd = new FormData();
+					fd.append('audio', blob, `recording.${ext}`);
+					const res = await fetch('/api/command', { method: 'POST', body: fd });
+					const json = (await res.json()) as
+						| { status: 'ok'; audioBase64?: string; mode: string; playSong?: string }
+						| { status: 'error'; message: string };
+
+					if (json.status === 'ok') {
+						if (!audioEl) return;
+						if (json.audioBase64) {
+							const bytes = base64ToUint8Array(json.audioBase64);
+							const outBlob = new Blob([bytes], { type: 'audio/mp3' });
+							objectUrl = URL.createObjectURL(outBlob);
+							audioEl.src = objectUrl;
+						} else if (json.playSong) {
+							audioEl.src = json.playSong;
+						}
+
+						try {
+							await audioEl.play();
+						} catch (error) {
+							console.error('Error playing audio:', error);
+						}
+
+						audioEl.onended = () => {
+							if (objectUrl) {
+								URL.revokeObjectURL(objectUrl);
+								objectUrl = null;
+							}
+						};
+					} else {
+						console.error('Server error:', json.message);
+					}
+				} catch (error) {
+					console.error('Upload or playback failed:', error);
+				}
+			};
+
+			mediaRecorder.start();
+			isActive = true;
+		} catch (err) {
+			console.error('Microphone error:', err);
+			mediaStream?.getTracks().forEach((t) => t.stop());
+			mediaStream = null;
+			mediaRecorder = null;
+			isActive = false;
 		}
 	}
 
-	onDestroy(() => {
-		if (timeoutId) clearTimeout(timeoutId);
-	});
+	function stopRecording() {
+		if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+			mediaRecorder.stop();
+		} else {
+			isActive = false;
+			mediaStream?.getTracks().forEach((t) => t.stop());
+			mediaStream = null;
+			mediaRecorder = null;
+		}
+	}
+
+	function handlePressStart() {
+		startRecording();
+	}
+
+	function handlePressEnd() {
+		stopRecording();
+	}
+
+	function onKeyDown(e: KeyboardEvent) {
+		if ((e.key === ' ' || e.key === 'Enter') && !isActive) {
+			e.preventDefault();
+			handlePressStart();
+		}
+	}
+
+	function onKeyUp(e: KeyboardEvent) {
+		if (e.key === ' ' || e.key === 'Enter') {
+			e.preventDefault();
+			handlePressEnd();
+		}
+	}
+
+	function base64ToUint8Array(base64: string) {
+		const binary = atob(base64);
+		const len = binary.length;
+		const bytes = new Uint8Array(len);
+		for (let i = 0; i < len; i++) {
+			bytes[i] = binary.charCodeAt(i);
+		}
+		return bytes;
+	}
+
+	function cleanup() {
+		if (objectUrl) {
+			URL.revokeObjectURL(objectUrl);
+			objectUrl = null;
+		}
+		mediaStream?.getTracks().forEach((t) => t.stop());
+		mediaStream = null;
+		mediaRecorder = null;
+	}
+
+	if (typeof window !== 'undefined') {
+		window.addEventListener('pagehide', cleanup);
+		window.addEventListener('beforeunload', cleanup);
+	}
 </script>
 
 <div class="page">
@@ -39,7 +198,12 @@
 			class="voice-circle {isActive ? 'active' : ''}"
 			role="button"
 			tabindex="0"
-			on:click={handleClick}
+			on:pointerdown={handlePressStart}
+			on:pointerup={handlePressEnd}
+			on:pointercancel={handlePressEnd}
+			on:mouseleave={handlePressEnd}
+			on:keydown={onKeyDown}
+			on:keyup={onKeyUp}
 		>
 			<div class="status"></div>
 			<div class="microphone">🎤</div>
