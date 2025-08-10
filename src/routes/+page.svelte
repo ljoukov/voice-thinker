@@ -192,7 +192,7 @@
 	</div>
 
 	<div class="container">
-		<h1 class="title">Voice Assistant</h1>
+		<h1 class="title">D’Amico Law Office Call Assistant</h1>
 		<div
 			id="voiceButton"
 			class="voice-circle {isActive ? 'active' : ''}"

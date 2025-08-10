@@ -4,15 +4,34 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agent Setup — D’Amico Law Offices</title>
+  <style>
+    /* Layout: readable measure and center the content */
+    :root { --page-max-width: 72ch; }
+    body { margin: 0; }
+    main {
+      max-width: var(--page-max-width);
+      margin: 0 auto;
+      padding: 1.25rem;
+      line-height: 1.6;
+    }
+
+    /* Increase vertical spacing between "First message" list items */
+    #first-message-options li + li { margin-top: 0.75rem; }
+  </style>
 </head>
 <body>
   <main>
     <h1>Agent Setup</h1>
 
     <h2>First message</h2>
-    <div>
-      Thank you for calling D’Amico Law Offices. My name is Kara, the firm’s A-I intake assistant—our call is recorded for quality… I’m so sorry you’ve been hurt. How can I help you today?
-    </div>
+    <ul id="first-message-options">
+      <li>“Hello—thanks for calling D’Amico Law Offices. I’m Kara, the firm’s A-I intake assistant. This call is recorded for quality. I’m sorry you’re dealing with an injury; what can I do for you today?”</li>
+      <li>“Good day, you’ve reached D’Amico Law Offices. My name is Kara—an A-I assistant here, and just a heads-up, we record all calls. I understand you may be hurt or worried, so let’s get you some help. How may I assist?”</li>
+      <li>“D’Amico Law Offices—Kara speaking. I’m our A-I intake specialist, and this conversation is recorded for quality assurance. I’m really sorry for the circumstances bringing you here. What would you like to share with me first?”</li>
+      <li>“Thank you for contacting D’Amico Law Offices. Kara here—the firm’s A-I intake agent. We do record calls for training and quality. I know injuries can be stressful, so please tell me how I can help.”</li>
+      <li>“You’ve reached D’Amico Law Offices. My name is Kara, an A-I assistant handling new-client intake, and our call is being recorded. I’m sorry you’re going through this—how can I assist you today?”</li>
+    </ul>
+
 
     <section id="personality">
       <h2 id="sample-markdownpersonality">Personality</h2>
