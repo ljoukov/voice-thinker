@@ -44,6 +44,10 @@ We propose a fully automated system where an AI agent can be set up simply by pr
 - **Efficiency:** The AI agent prepares a concise brief for the lawyer, saving time and effort.
 - **Availability:** The AI agent is available 24/7 to handle inquiries.
 
+## Architecture
+
+<img width="1387" height="778" alt="image" src="https://github.com/user-attachments/assets/9bcc3961-ac08-4698-86c8-c9379487bd19" />
+
 ## Case Study
 
 A real-world example of a firm that could benefit from this solution:
